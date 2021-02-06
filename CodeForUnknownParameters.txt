@@ -1,0 +1,280 @@
+
+Onepoint=function(alpha,r,m)
+{
+	
+			b=0;
+			a=c(1:100000)/100000
+			if(m-r==0)
+				{
+				diff=abs(2*(a/2)^r-alpha)
+				return(round(a[which(diff==min(diff))],4))
+				}
+			if(m-r==1)
+				{
+				diff=abs(2*((m*(a/2)^r*(1-(a/2))+(a/2)^m))-alpha)
+				return(round(a[which(diff==min(diff))],4))
+				}
+			if(m-r==2)
+				{
+				q=NULL
+				q=factorial(m)/(factorial(r)*factorial(m-r))
+				diff=abs((2*(q*((a/2)^(r))*((1-(a/2))^(m-r))+m*((a/2)^(r+1))*(1-(a/2))+((a/2)^(m)))-alpha))
+				return(round(a[which(diff==min(diff))],4))
+				}
+
+	}
+
+# end of the function for cmputing probability of single point
+
+SMS=function(n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)
+	{
+		if(D=="normal")
+			{
+			meanx=mean
+			sdx=sd
+			d=rnorm(n,mean,sd)
+			}
+		if(D=="lognormal")
+			{
+			meanx=exp(meanlog+((sdlog^2)/2))
+			sdx=sqrt((exp(sdlog^2)-1)*exp((2*meanlog)+sdlog^2))
+			d=rlnorm(n,meanlog,sdlog)
+			}
+		if(D=="logistic")
+			{
+			meanx=location
+			sdx=sd=sqrt((scale^2*pi^2)/3)
+			d=rlogis(n,location,scale)
+			}
+		if(D=="weibull")
+			{
+			meanx=scale*gamma(1+(1/shape))
+			sdx=sqrt(scale^2*(gamma(1+(2/shape))-(gamma(1+(1/shape)))^2))
+			d=rweibull(n,shape,scale)
+			}
+		if(D=="chisquare")
+			{
+			meanx=df
+			sdx=sqrt(2*df)
+			d=rchisq(n, df)
+			}
+      		if(D=="exp")
+			{
+			meanx=1/rate
+			sdx=1/rate
+			d=rexp(n,rate)
+			}
+     		if(D=="t")
+			{
+			meanx=0
+			sdx=sqrt(df/(df-2))
+			d=rt(n, df)
+			}
+      		if(D=="gamma")
+			{
+			meanx=shape*scale
+			sdx=sqrt(shape*scale^2)
+			d=rgamma(n,shape,scale)
+			}
+			
+			return(cbind(d,meanx,sdx))
+
+
+ } #End of SMS function
+
+
+UC=function(k,n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)
+	{
+	b=c()
+	for(i in 1:10000)
+			{
+			a=c()
+				for(j in 1:k)
+					{
+						samp=SMS(n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)
+						a[j]=var(samp[,1])
+						sd=samp[1,3]	
+					} # end of k loop
+						b[i]=sqrt(mean(a))/sd
+			}
+	return(mean(b))
+
+	} # End of UC function
+
+CC=function(para,r,m,alpha,k,n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)
+	{
+	p=Onepoint(alpha,r,m)
+	
+if(para=="False")
+		{
+	cons=round(UC(k,n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate),3)
+		}
+tt=c()
+for(j in 1:200000)
+	{
+	
+			if(para=="False")
+				{
+					b=c()
+					c=c()
+					for(i in 1:k)
+						{
+						samp=SMS(n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)										
+						b[i]=mean(samp[,1])
+						c[i]=var(samp[,1])
+						} 
+		
+				 } 
+                    
+										# future samples
+
+					samp=SMS(n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)	
+					meanx=samp[1,2]
+					sdx=samp[1,3]
+					d=mean(samp[,1])
+
+			if(para=="False")
+				{
+				tt[j]=((d-mean(b))*sqrt(n))/(sqrt(mean(c))/cons)
+				}
+			if(para=="True")
+				{
+				tt[j]=(d-meanx)/sdx
+				}
+
+	 }
+
+	return(round(c(quantile(tt,p/2),quantile(tt,1-p/2),meanx,sdx),3))
+
+	} # End of the the function corrected constants
+
+CR=function(para,simu,r,m,alpha,k,n,delta,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)
+	{
+
+			if(para!="False" & para!="True")
+				{
+				return("invalid value of para, only can takes value either True and False")
+				}
+			if(simu<1)
+				{
+				return("Invalid number of simulation selected, always simulation>0")
+				}
+			if(r<1 | r>m)
+				{
+				return("value of 1<=r<=m ")
+				}
+			if(alpha<0 | alpha>1)
+				{
+				return("Invalid value of alpha selected, alpha lies between o and 1")
+				}
+			if(k<0)
+				{
+				return("Invalid number of estimation selected, always k>0")
+				}
+			if(n<1)
+				{
+				return("Invalid input, sample size always >0")
+				}
+			if(D!="normal" & D!="logistic" & D!="weibull" & D!="chisquared" & D!="gamma" & D!="lognormal" & D!="t")
+				{
+				return("Invalid distribution selected, only distribution can selected normal, weibull,logistic, gamma,chisquare and lognormal and t")
+				}
+				aa=CC(para,r,m,alpha,k,n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)
+				if(para=="False")
+					{
+					bb=UC(k,n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)
+					}else{
+					bb="Null"
+					}
+					cnu=aa[2]
+					cnl=aa[1]
+					p=c()
+
+	for(l in 1:simu)   
+		{
+			sum1=0
+			sum2=0
+			ucl=c()
+			lcl=c()
+			y=c()
+			for(j in 1:m)   # runs rules
+				{
+						b=c()
+						c=c()
+
+				if(para=="False")
+					{
+						for(i in 1:k)
+							{
+								samp=SMS(n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)									
+								a=samp[,1]
+								b[i]=mean(a)
+								c[i]=var(a)
+							}
+								uhat=mean(b)
+								sighat=sqrt(mean(c))/(bb*sqrt(n))
+								ucl[j]=round(uhat+(cnu*sighat),2)
+								lcl[j]=round(uhat+(cnl*sighat),2)
+								samp=SMS(n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)	
+								y[j]=mean(samp[,1]+delta)
+
+					}
+
+					if(para=="True")
+					{
+					samp=SMS(n,D,mean,sd,meanlog,sdlog,location,scale,shape,df,rate)	
+					ucl=samp[1,2]+(cnu*samp[1,3])
+					lcl=samp[1,2]+(cnl*samp[1,3])
+					y[j]=mean(samp[,1]+delta)					
+					}
+
+				}  
+			
+			if(sum(y>ucl)>=r)
+				{
+				sum1=sum1+1
+				} else
+				
+			if(sum(y<lcl)>=r)
+				{
+				sum2=sum2+1
+				}
+	
+				p[l]=sum1+sum2
+
+	}	
+	
+
+cat("\n","\n","\t","\t","Output-Summary","\n","\n")
+cat("\t","Process Parameters",":","\t","\t","\t",para,"\t","\n")
+cat("\t","Number of simulation",":","\t","\t",simu,"\t","\n")
+cat("\t","Rule Type", "\t", ":","\t","\t","\t",r,"/",m,"\n")
+cat("\t","False Alarm Rate :","\t","\t","\t",alpha,"\n")
+cat("\t","Number of samples for estimation(k)",":","\t",k,"\n")
+cat("\t","Sample Size","\t", ": ","\t","\t","\t",n,"\n")
+cat("\t","Delta","\t","\t"," : ","\t","\t","\t",delta)
+cat("\n","\t", "Distribution",":","\t","\t","\t",D,"\n")
+cat("\t","process mean",":","\t","\t","\t",samp[1,2],"\n")
+cat("\t", "process standard deviation",":","\t","\t",samp[1,3],"\n")
+cat("\t", "Unbiasing Constant",":","\t","\t","\t",bb,"\n")
+cat("\t", "Corrected Constants",":","\t","\t","\t",cnl,cnu,"\n")
+cat("\t","Power","\t","\t", ": ","\t","\t","\t",round(mean(p),4),"\n","\n","\n")
+
+} # End of the function of CR
+
+
+
+CR(para="True",simu=100,r=1,m=1,alpha=0.0027,k=20,n=5,delta=0,D="normal",mean=0,sd=1,meanlog=0,sdlog=1,location=1,scale=1,shape,df,rate)
+
+
+
+
+
+
+
+
+
+
+
+
+
